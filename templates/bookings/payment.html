@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card shadow-lg-custom border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">Complete Your Payment</h3>
+                    <p class="mb-0">Booking ID: {{ booking.booking_id }}</p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info text-center" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        You are about to pay for your booking at <strong>{{ booking.turf.name }}</strong>.
+                    </div>
+
+                    <div class="booking-summary p-3 mb-4 border rounded">
+                        <h5>Booking Summary</h5>
+                        <div class="row">
+                            <div class="col-6">Turf:</div>
+                            <div class="col-6">{{ booking.turf.name }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">Date:</div>
+                            <div class="col-6">{{ booking.booking_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">Time:</div>
+                            <div class="col-6">{{ booking.start_time|time:"h:i A" }} - {{ booking.end_time|time:"h:i A" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">Duration:</div>
+                            <div class="col-6">{{ booking.duration_hours }} hour{{ booking.duration_hours|pluralize }}</div>
+                        </div>
+                        <hr>
+                        <div class="row fw-bold">
+                            <div class="col-6">Total Amount:</div>
+                            <div class="col-6 text-primary">₹{{ booking.total_amount|floatformat:2 }}</div>
+                        </div>
+                    </div>
+
+                    <div class="payment-form text-center">
+                        <h4 class="mb-4">Choose Payment Method</h4>
+                        <button id="rzp-button1" class="btn btn-success btn-lg">
+                            <i class="fas fa-rupee-sign me-2"></i>Pay with Razorpay
+                        </button>
+                        <p class="mt-3 text-muted">Powered by Razorpay for secure transactions.</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-light text-center">
+                    <a href="{% url 'bookings:detail' booking.pk %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Booking Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById('rzp-button1').onclick = function(e) {
+    e.preventDefault();
+    const options = {
+        "key": "{{ razorpay_key_id }}", // Enter the Key ID generated from the Dashboard
+        "amount": "{{ booking.total_amount|stringformat:'%.2f'|cut:'.' }}00", // Amount is in currency subunits. Hence, 50000 = 50000 paise = INR 500.
+        "currency": "INR",
+        "name": "TurfBooking",
+        "description": "Turf Booking Payment (ID: {{ booking.booking_id }})",
+        "image": "{% static 'images/logo.png' %}", // Replace with your logo
+        "order_id": "{{ razorpay_order_id }}", //This is a sample Order ID. Pass the `id` attribute of the order created on the server side
+        "handler": function (response){
+            // Send payment details to your Django backend for verification
+            fetch("{% url 'bookings:payment_success' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') // Function to get CSRF token
+                },
+                body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    booking_id: "{{ booking.pk }}" // Pass booking ID to link payment
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = "{% url 'bookings:detail' booking.pk %}?payment_status=success";
+                } else {
+                    alert('Payment verification failed: ' + data.message);
+                    window.location.href = "{% url 'bookings:detail' booking.pk %}?payment_status=failed";
+                }
+            })
+            .catch(error => {
+                console.error('Error during payment verification:', error);
+                alert('An error occurred during payment verification.');
+                window.location.href = "{% url 'bookings:detail' booking.pk %}?payment_status=failed";
+            });
+        },
+        "prefill": {
+            "name": "{{ user.get_full_name|default:user.username }}",
+            "email": "{{ user.email }}",
+            "contact": "{{ user.phone_number|default:'' }}"
+        },
+        "notes": {
+            "booking_id": "{{ booking.booking_id }}",
+            "turf_name": "{{ booking.turf.name }}"
+        },
+        "theme": {
+            "color": "#2c5530" // Your primary color
+        }
+    };
+    const rzp1 = new Razorpay(options);
+    rzp1.on('payment.failed', function (response){
+        alert('Payment Failed: ' + response.error.description);
+        window.location.href = "{% url 'bookings:detail' booking.pk %}?payment_status=failed";
+    });
+    rzp1.open();
+};
+
+// Function to get CSRF token (from custom.js or define here if not available globally)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

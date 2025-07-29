@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ turf.name }} - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-lg-custom border-0 mb-4">
+                <div class="card-body p-4">
+                    <h1 class="mb-3">{{ turf.name }}</h1>
+                    <p class="text-muted mb-2">
+                        <i class="fas fa-map-marker-alt me-2"></i>{{ turf.address }}, {{ turf.city }}, {{ turf.state }} - {{ turf.pincode }}
+                    </p>
+                    <p class="mb-3">
+                        <span class="badge bg-primary me-2">{{ turf.category.name }}</span>
+                        <span class="badge bg-info me-2">{{ turf.surface_type|title }}</span>
+                        {% if turf.average_rating %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-star"></i> {{ turf.average_rating|floatformat:1 }} ({{ turf.turfreview_set.count }} reviews)
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">No reviews yet</span>
+                        {% endif %}
+                    </p>
+
+                    {% if turf.main_image %}
+                        <img src="{{ turf.main_image.url }}" class="img-fluid rounded mb-4 shadow-sm" alt="{{ turf.name }}" style="max-height: 450px; width: 100%; object-fit: cover;">
+                    {% else %}
+                        <img src="/placeholder.svg?height=450&width=800" class="img-fluid rounded mb-4 shadow-sm" alt="{{ turf.name }}" style="max-height: 450px; width: 100%; object-fit: cover;">
+                    {% endif %}
+
+                    {% if turf.turfimage_set.all %}
+                        <h5 class="mt-4 mb-3">Gallery</h5>
+                        <div class="turf-gallery">
+                            {% for image in turf.turfimage_set.all %}
+                                <img src="{{ image.image.url }}" alt="{{ turf.name }} - Image {{ forloop.counter }}">
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <h5 class="mt-4 mb-3">Description</h5>
+                    <p>{{ turf.description }}</p>
+
+                    <h5 class="mt-4 mb-3">Details</h5>
+                    <ul class="list-group list-group-flush mb-4">
+                        <li class="list-group-item"><strong>Capacity:</strong> {{ turf.capacity }} players</li>
+                        <li class="list-group-item"><strong>Dimensions:</strong> {{ turf.length }}m x {{ turf.width }}m</li>
+                        <li class="list-group-item"><strong>Price per hour:</strong> ₹{{ turf.price_per_hour }}</li>
+                        {% if turf.weekend_price_multiplier > 1 %}
+                            <li class="list-group-item"><strong>Weekend Price:</strong> ₹{{ turf.price_per_hour|mul:turf.weekend_price_multiplier|floatformat:2 }} ({{ turf.weekend_price_multiplier }}x multiplier)</li>
+                        {% endif %}
+                    </ul>
+
+                    {% if turf.features %}
+                        <h5 class="mt-4 mb-3">Features</h5>
+                        <div>
+                            {% for feature in turf.features %}
+                                <span class="feature-badge">
+                                    {% if feature == 'parking' %}<i class="fas fa-parking me-1"></i>Parking
+                                    {% elif feature == 'washroom' %}<i class="fas fa-toilet me-1"></i>Washroom
+                                    {% elif feature == 'lighting' %}<i class="fas fa-lightbulb me-1"></i>Floodlights
+                                    {% elif feature == 'changing_room' %}<i class="fas fa-tshirt me-1"></i>Changing Room
+                                    {% elif feature == 'cafeteria' %}<i class="fas fa-coffee me-1"></i>Cafeteria
+                                    {% elif feature == 'first_aid' %}<i class="fas fa-medkit me-1"></i>First Aid
+                                    {% elif feature == 'security' %}<i class="fas fa-shield-alt me-1"></i>24/7 Security
+                                    {% elif feature == 'equipment' %}<i class="fas fa-dumbbell me-1"></i>Equipment Rental
+                                    {% else %}{{ feature|title }}
+                                    {% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if user.is_authenticated and user.user_type == 'turf_owner' and user == turf.owner %}
+                        <div class="mt-4 text-end">
+                            <a href="{% url 'turfs:update' turf.pk %}" class="btn btn-outline-primary">
+                                <i class="fas fa-edit me-2"></i>Edit Turf Details
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="card shadow-lg-custom border-0 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="mb-3">Customer Reviews ({{ turf.turfreview_set.count }})</h4>
+                    {% if user.is_authenticated and user.user_type == 'customer' %}
+                        <div class="mb-4">
+                            <h5>Leave a Review</h5>
+                            <form method="post" action="{% url 'turfs:add_review' turf.pk %}">
+                                {% csrf_token %}
+                                {{ review_form|crispy }}
+                                <button type="submit" class="btn btn-primary mt-2">Submit Review</button>
+                            </form>
+                        </div>
+                    {% endif %}
+
+                    {% if turf.turfreview_set.all %}
+                        <div class="reviews-list">
+                            {% for review in turf.turfreview_set.all %}
+                                <div class="review-card mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h6 class="mb-0">{{ review.user.get_full_name|default:review.user.username }}</h6>
+                                        <small class="text-muted">{{ review.created_at|date:"F d, Y" }}</small>
+                                    </div>
+                                    <div class="rating-stars mb-2">
+                                        {% for i in "12345"|make_list %}
+                                            {% if forloop.counter <= review.rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <p class="mb-0">{{ review.comment }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No reviews yet. Be the first to review this turf!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Booking Widget -->
+            <div class="card shadow-lg-custom border-0 sticky-top" style="top: 80px;">
+                <div class="card-body p-4">
+                    <h4 class="mb-3">Book This Turf</h4>
+                    <p class="h3 text-primary mb-3">₹{{ turf.price_per_hour }}<small class="text-muted">/hour</small></p>
+                    
+                    <div class="d-grid gap-2">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'bookings:create' turf.pk %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calendar-plus me-2"></i>Book Now
+                            </a>
+                        {% else %}
+                            <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login to Book
+                            </a>
+                            <a href="{% url 'accounts:register' %}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h5>Contact Turf Owner</h5>
+                    <p class="mb-1"><strong>Owner:</strong> {{ turf.owner.get_full_name|default:turf.owner.username }}</p>
+                    <p class="mb-3"><strong>Email:</strong> {{ turf.owner.email }}</p>
+                    
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#contactOwnerModal">
+                        <i class="fas fa-envelope me-2"></i>Send Message
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Owner Modal -->
+<div class="modal fade" id="contactOwnerModal" tabindex="-1" aria-labelledby="contactOwnerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="contactOwnerModalLabel">Contact {{ turf.owner.get_full_name|default:turf.owner.username }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="senderName" class="form-label">Your Name</label>
+                        <input type="text" class="form-control" id="senderName" value="{{ user.get_full_name|default:'' }}" {% if user.is_authenticated %}readonly{% endif %}>
+                    </div>
+                    <div class="mb-3">
+                        <label for="senderEmail" class="form-label">Your Email</label>
+                        <input type="email" class="form-control" id="senderEmail" value="{{ user.email|default:'' }}" {% if user.is_authenticated %}readonly{% endif %}>
+                    </div>
+                    <div class="mb-3">
+                        <label for="messageContent" class="form-label">Message</label>
+                        <textarea class="form-control" id="messageContent" rows="5" placeholder="Type your message here..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Send Message</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.turf-gallery img {
+    border: 2px solid transparent;
+}
+.turf-gallery img:hover {
+    border-color: var(--primary-color);
+}
+</style>
+{% endblock %}

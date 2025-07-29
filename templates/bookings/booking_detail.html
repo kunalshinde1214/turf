@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Booking Details - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg-custom border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">Booking Details (ID: {{ booking.booking_id }})</h3>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Turf:</strong> <a href="{% url 'turfs:detail' booking.turf.pk %}" class="text-decoration-none">{{ booking.turf.name }}</a></p>
+                            <p class="mb-1"><strong>Location:</strong> {{ booking.turf.address }}, {{ booking.turf.city }}</p>
+                            <p class="mb-1"><strong>Booked By:</strong> {{ booking.user.get_full_name|default:booking.user.username }}</p>
+                            <p class="mb-1"><strong>Contact:</strong> {{ booking.contact_number }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1"><strong>Booking Date:</strong> {{ booking.booking_date|date:"F d, Y" }}</p>
+                            <p class="mb-1"><strong>Time Slot:</strong> {{ booking.start_time|time:"h:i A" }} - {{ booking.end_time|time:"h:i A" }}</p>
+                            <p class="mb-1"><strong>Duration:</strong> {{ booking.duration_hours }} hour{{ booking.duration_hours|pluralize }}</p>
+                            <p class="mb-1"><strong>Booked On:</strong> {{ booking.created_at|date:"F d, Y H:i" }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Status:</strong> 
+                                <span class="badge 
+                                    {% if booking.status == 'confirmed' %}bg-success
+                                    {% elif booking.status == 'pending' %}bg-warning text-dark
+                                    {% elif booking.status == 'cancelled' %}bg-danger
+                                    {% elif booking.status == 'completed' %}bg-info
+                                    {% endif %}
+                                    ">{{ booking.get_status_display }}</span>
+                            </p>
+                            <p class="mb-1"><strong>Payment Status:</strong> 
+                                <span class="badge 
+                                    {% if booking.payment_status == 'paid' %}bg-success
+                                    {% elif booking.payment_status == 'pending' %}bg-warning text-dark
+                                    {% elif booking.payment_status == 'failed' %}bg-danger
+                                    {% endif %}
+                                    ">{{ booking.get_payment_status_display }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1"><strong>Base Price:</strong> ₹{{ booking.base_price|floatformat:2 }}</p>
+                            <p class="mb-1"><strong>Discount:</strong> ₹{{ booking.discount_amount|floatformat:2 }}</p>
+                            <p class="mb-1"><strong>Tax (18%):</strong> ₹{{ booking.tax_amount|floatformat:2 }}</p>
+                            <h4 class="mb-0 text-primary"><strong>Total Amount:</strong> ₹{{ booking.total_amount|floatformat:2 }}</h4>
+                        </div>
+                    </div>
+
+                    {% if booking.special_requests %}
+                        <hr>
+                        <div class="mb-3">
+                            <strong>Special Requests:</strong>
+                            <p class="text-muted">{{ booking.special_requests }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if booking.payment %}
+                        <hr>
+                        <div class="mb-3">
+                            <h5>Payment Information</h5>
+                            <p class="mb-1"><strong>Method:</strong> {{ booking.payment.get_payment_method_display }}</p>
+                            <p class="mb-1"><strong>Transaction ID:</strong> {{ booking.payment.transaction_id }}</p>
+                            <p class="mb-1"><strong>Payment Date:</strong> {{ booking.payment.payment_date|date:"F d, Y H:i" }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if booking.cancellation %}
+                        <hr>
+                        <div class="alert alert-danger" role="alert">
+                            <h5>Booking Cancelled</h5>
+                            <p class="mb-1"><strong>Reason:</strong> {{ booking.cancellation.reason }}</p>
+                            <p class="mb-1"><strong>Cancelled By:</strong> {{ booking.cancellation.cancelled_by.username }}</p>
+                            <p class="mb-1"><strong>Cancelled On:</strong> {{ booking.cancellation.cancelled_at|date:"F d, Y H:i" }}</p>
+                            <p class="mb-0"><strong>Refund Amount:</strong> ₹{{ booking.cancellation.refund_amount|floatformat:2 }} (Processed: {{ booking.cancellation.refund_processed|yesno:"Yes,No" }})</p>
+                        </div>
+                    {% endif %}
+
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+                    <a href="{% url 'bookings:list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Bookings
+                    </a>
+                    {% if booking.status == 'confirmed' and booking.booking_date >= today %}
+                        <a href="{% url 'bookings:cancel' booking.pk %}" class="btn btn-danger">
+                            <i class="fas fa-times-circle me-2"></i>Cancel Booking
+                        </a>
+                    {% endif %}
+                    {% if booking.status == 'confirmed' and booking.payment_status == 'paid' %}
+                        <a href="{% url 'bookings:download_receipt' booking.pk %}" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i>Download Receipt
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

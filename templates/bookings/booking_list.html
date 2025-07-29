@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}My Bookings - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">My Bookings</h2>
+
+    <!-- Search and Filter Form -->
+    <div class="card shadow-custom mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Filter Bookings</h5>
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    {{ search_form.date_from|as_crispy_field }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.date_to|as_crispy_field }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.status|as_crispy_field }}
+                </div>
+                <div class="col-md-3">
+                    {{ search_form.turf_name|as_crispy_field }}
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                    <a href="{% url 'bookings:list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>Clear Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if bookings %}
+        <div class="row">
+            {% for booking in bookings %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-custom booking-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">
+                            <a href="{% url 'bookings:detail' booking.pk %}" class="text-decoration-none text-primary">
+                                {{ booking.turf.name }}
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted mb-1">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            {{ booking.booking_date|date:"F d, Y" }}
+                        </p>
+                        <p class="card-text text-muted mb-1">
+                            <i class="fas fa-clock me-2"></i>
+                            {{ booking.start_time|time:"h:i A" }} - {{ booking.end_time|time:"h:i A" }} ({{ booking.duration_hours }} hrs)
+                        </p>
+                        <p class="card-text mb-2">
+                            <span class="badge 
+                                {% if booking.status == 'confirmed' %}bg-success
+                                {% elif booking.status == 'pending' %}bg-warning text-dark
+                                {% elif booking.status == 'cancelled' %}bg-danger
+                                {% elif booking.status == 'completed' %}bg-info
+                                {% endif %}
+                                ">
+                                {{ booking.get_status_display }}
+                            </span>
+                            <span class="badge 
+                                {% if booking.payment_status == 'paid' %}bg-success
+                                {% elif booking.payment_status == 'pending' %}bg-warning text-dark
+                                {% elif booking.payment_status == 'failed' %}bg-danger
+                                {% endif %}
+                                ">
+                                Payment: {{ booking.get_payment_status_display }}
+                            </span>
+                        </p>
+                        <h6 class="text-end text-primary">Total: ₹{{ booking.total_amount|floatformat:2 }}</h6>
+                    </div>
+                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                        <a href="{% url 'bookings:detail' booking.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-info-circle me-1"></i>Details
+                        </a>
+                        {% if booking.status == 'confirmed' and booking.booking_date >= today %}
+                            <a href="{% url 'bookings:cancel' booking.pk %}" class="btn btn-sm btn-danger">
+                                <i class="fas fa-times-circle me-1"></i>Cancel
+                            </a>
+                        {% endif %}
+                        {% if booking.status == 'confirmed' and booking.payment_status == 'paid' %}
+                            <a href="{% url 'bookings:download_receipt' booking.pk %}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-file-pdf me-1"></i>Receipt
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="Booking pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="alert alert-info text-center" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            No bookings found matching your criteria.
+            <a href="{% url 'turfs:list' %}" class="alert-link">Start booking now!</a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.booking-card {
+    transition: all 0.3s ease;
+}
+
+.booking-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Server Error - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-danger">500</h1>
+                <h2 class="mb-4">Server Error</h2>
+                <p class="lead mb-4">Something went wrong on our end. We're working to fix it!</p>
+
+                <div class="mb-4">
+                    <i class="fas fa-tools fa-3x text-muted"></i>
+                </div>
+
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="{% url 'core:home' %}" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>Go Home
+                    </a>
+                    <button onclick="window.location.reload()" class="btn btn-outline-primary">
+                        <i class="fas fa-refresh me-2"></i>Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Book Turf - {{ turf.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg-custom border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">Book Turf: {{ turf.name }}</h3>
+                    <p class="mb-0">{{ turf.address }}, {{ turf.city }}</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="bookingForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.booking_date.id_for_label }}" class="form-label">Booking Date</label>
+                            <input type="date" class="form-control" id="{{ form.booking_date.id_for_label }}" name="{{ form.booking_date.name }}" value="{{ form.booking_date.value|date:'Y-m-d' }}" required min="{{ today|date:'Y-m-d' }}">
+                            {% if form.booking_date.errors %}
+                                <div class="invalid-feedback d-block">{{ form.booking_date.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Available Time Slots for <span id="selectedDateDisplay"></span></label>
+                            <div class="availability-slots d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                                <p class="text-muted">Select a date to see available slots.</p>
+                            </div>
+                            <input type="hidden" name="{{ form.start_time.name }}" id="{{ form.start_time.id_for_label }}" value="{{ form.start_time.value|time:'H:i' }}">
+                            <input type="hidden" name="{{ form.end_time.name }}" id="{{ form.end_time.id_for_label }}" value="{{ form.end_time.value|time:'H:i' }}">
+                            {% if form.start_time.errors or form.end_time.errors %}
+                                <div class="invalid-feedback d-block">{{ form.start_time.errors|default:form.end_time.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.contact_number|as_crispy_field }}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.special_requests|as_crispy_field }}
+                        </div>
+
+                        <div class="booking-summary p-3 mb-4 border rounded">
+                            <h5>Booking Summary</h5>
+                            <p class="text-muted">Select a time slot to see summary.</p>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100" id="bookNowBtn" disabled>
+                            <i class="fas fa-calendar-check me-2"></i>Proceed to Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookingDateInput = document.getElementById('{{ form.booking_date.id_for_label }}');
+    const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+    const turfId = {{ turf.pk }};
+    const bookNowBtn = document.getElementById('bookNowBtn');
+    const startTimeInput = document.getElementById('{{ form.start_time.id_for_label }}');
+    const endTimeInput = document.getElementById('{{ form.end_time.id_for_label }}');
+    const bookingSummaryContainer = document.querySelector('.booking-summary');
+
+    function updateSelectedDateDisplay() {
+        const dateValue = bookingDateInput.value;
+        if (dateValue) {
+            const date = new Date(dateValue);
+            selectedDateDisplay.textContent = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        } else {
+            selectedDateDisplay.textContent = 'a date';
+        }
+    }
+
+    bookingDateInput.addEventListener('change', function() {
+        updateSelectedDateDisplay();
+        checkAvailability(turfId, this.value);
+        // Reset selected time and summary when date changes
+        startTimeInput.value = '';
+        endTimeInput.value = '';
+        bookNowBtn.disabled = true;
+        bookingSummaryContainer.innerHTML = `<h5>Booking Summary</h5><p class="text-muted">Select a time slot to see summary.</p>`;
+    });
+
+    // Initial call if a date is pre-filled (e.g., after validation error)
+    if (bookingDateInput.value) {
+        updateSelectedDateDisplay();
+        checkAvailability(turfId, bookingDateInput.value);
+        // If times are pre-filled, update summary
+        if (startTimeInput.value && endTimeInput.value) {
+            updateBookingSummary(startTimeInput.value, endTimeInput.value, {{ turf.price_per_hour }});
+            bookNowBtn.disabled = false;
+        }
+    }
+
+    // Override updateAvailabilityDisplay from custom.js to handle selection and button state
+    window.updateAvailabilityDisplay = function(slots) {
+        const container = document.querySelector('.availability-slots');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (slots.length === 0) {
+            container.innerHTML = '<p class="text-muted">No available slots for this date.</p>';
+            return;
+        }
+        
+        slots.forEach(slot => {
+            const slotElement = document.createElement('div');
+            slotElement.className = 'time-slot available';
+            slotElement.dataset.startTime = slot.start_time;
+            slotElement.dataset.endTime = slot.end_time;
+            slotElement.dataset.price = slot.price;
+            slotElement.innerHTML = `
+                <div>${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}</div>
+                <small>₹${slot.price}</small>
+            `;
+            
+            slotElement.addEventListener('click', function() {
+                document.querySelectorAll('.time-slot.selected').forEach(s => {
+                    s.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                startTimeInput.value = slot.start_time;
+                endTimeInput.value = slot.end_time;
+                updateBookingSummary(slot.start_time, slot.end_time, slot.price);
+                bookNowBtn.disabled = false;
+            });
+            
+            container.appendChild(slotElement);
+        });
+    };
+
+    // Override updateBookingSummary from custom.js to use turf's actual price
+    window.updateBookingSummary = function(startTime, endTime, price) {
+        const summaryContainer = document.querySelector('.booking-summary');
+        if (!summaryContainer) return;
+
+        const start = new Date(`2000-01-01T${startTime}`);
+        const end = new Date(`2000-01-01T${endTime}`);
+        const durationMs = end - start;
+        const durationHours = durationMs / (1000 * 60 * 60);
+
+        const basePrice = parseFloat(price) * durationHours;
+        const taxRate = 0.18; // 18% GST
+        const tax = basePrice * taxRate;
+        const total = basePrice + tax;
+
+        summaryContainer.innerHTML = `
+            <h5>Booking Summary</h5>
+            <div class="row">
+                <div class="col-6">Time:</div>
+                <div class="col-6">${startTime.substring(0, 5)} - ${endTime.substring(0, 5)}</div>
+            </div>
+            <div class="row">
+                <div class="col-6">Duration:</div>
+                <div class="col-6">${durationHours} hour(s)</div>
+            </div>
+            <div class="row">
+                <div class="col-6">Base Price:</div>
+                <div class="col-6">₹${basePrice.toFixed(2)}</div>
+            </div>
+            <div class="row">
+                <div class="col-6">Tax (18%):</div>
+                <div class="col-6">₹${tax.toFixed(2)}</div>
+            </div>
+            <hr>
+            <div class="row fw-bold">
+                <div class="col-6">Total:</div>
+                <div class="col-6">₹${total.toFixed(2)}</div>
+            </div>
+        `;
+    };
+});
+</script>
+{% endblock %}

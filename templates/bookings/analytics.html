@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Booking Analytics - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Booking Analytics</h2>
+    <p class="lead text-muted">Insights into your turf bookings and performance.</p>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-calendar-check fa-2x mb-2"></i>
+                <h3>{{ total_bookings }}</h3>
+                <p>Total Bookings</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h3>₹{{ total_revenue|floatformat:2 }}</h3>
+                <p>Total Revenue</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-percent fa-2x mb-2"></i>
+                <h3>{{ cancellation_rate|floatformat:1 }}%</h3>
+                <p>Cancellation Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-custom mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Revenue Over Time</h5>
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-custom mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Bookings by Turf</h5>
+            <canvas id="turfBookingsChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-custom mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Booking Status Distribution</h5>
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-custom mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Generate Report</h5>
+            <p class="text-muted">Download a detailed booking report in PDF format.</p>
+            <a href="{% url 'bookings:generate_report' %}" class="btn btn-primary">
+                <i class="fas fa-file-pdf me-2"></i>Generate PDF Report
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Data passed from Django view
+    const revenueData = JSON.parse('{{ revenue_data|safe }}');
+    const turfBookingsData = JSON.parse('{{ turf_bookings_data|safe }}');
+    const statusData = JSON.parse('{{ status_data|safe }}');
+
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: revenueData.labels,
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: revenueData.data,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Monthly Revenue'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Revenue (₹)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        }
+    });
+
+    // Turf Bookings Chart
+    const turfBookingsCtx = document.getElementById('turfBookingsChart').getContext('2d');
+    new Chart(turfBookingsCtx, {
+        type: 'bar',
+        data: {
+            labels: turfBookingsData.labels,
+            datasets: [{
+                label: 'Number of Bookings',
+                data: turfBookingsData.data,
+                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Bookings by Turf'
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Bookings'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Turf Name'
+                    }
+                }
+            }
+        }
+    });
+
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: statusData.labels,
+            datasets: [{
+                label: 'Booking Status',
+                data: statusData.data,
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.7)', // Confirmed (Green)
+                    'rgba(255, 193, 7, 0.7)',  // Pending (Yellow)
+                    'rgba(220, 53, 69, 0.7)',  // Cancelled (Red)
+                    'rgba(23, 162, 184, 0.7)'  // Completed (Cyan)
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)',
+                    'rgba(23, 162, 184, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Booking Status Distribution'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

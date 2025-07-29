@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Update Turf - {{ turf.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg-custom border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">Update Turf: {{ turf.name }}</h3>
+                    <p class="mb-0">Modify details for your listed sports facility</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <fieldset class="mb-4 p-3 border rounded">
+                            <legend class="float-none w-auto px-2">Basic Information</legend>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.name|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.category|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                {{ form.description|as_crispy_field }}
+                            </div>
+                            <div class="mb-3">
+                                {% if turf.main_image %}
+                                    <p>Current Image: <a href="{{ turf.main_image.url }}" target="_blank">{{ turf.main_image.name }}</a></p>
+                                    <img src="{{ turf.main_image.url }}" alt="{{ turf.name }}" class="img-thumbnail mb-2" style="max-width: 200px;">
+                                {% endif %}
+                                {{ form.main_image|as_crispy_field }}
+                                <small class="form-text text-muted">Upload a new image to replace the current one.</small>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4 p-3 border rounded">
+                            <legend class="float-none w-auto px-2">Location Details</legend>
+                            <div class="mb-3">
+                                {{ form.address|as_crispy_field }}
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.city|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.state|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.pincode|as_crispy_field }}
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4 p-3 border rounded">
+                            <legend class="float-none w-auto px-2">Turf Specifications</legend>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.surface_type|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.capacity|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.length|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.width|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                {{ form.features|as_crispy_field }}
+                                <small class="form-text text-muted">Select all features available at your turf.</small>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4 p-3 border rounded">
+                            <legend class="float-none w-auto px-2">Pricing</legend>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.price_per_hour|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.weekend_price_multiplier|as_crispy_field }}
+                                    <small class="form-text text-muted">e.g., 1.2 for 20% higher price on weekends.</small>
+                                </div>
+                            </div>
+                        </fieldset>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                        <a href="{% url 'turfs:detail' turf.pk %}" class="btn btn-outline-secondary btn-lg w-100 mt-3">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Turf Details
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

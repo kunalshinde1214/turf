@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Dashboard - TurfBooking{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Welcome to Your Dashboard, {{ user.first_name|default:user.username }}!</h2>
+
+    <div class="row">
+        <!-- Quick Stats -->
+        <div class="col-md-4 mb-4">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-calendar-check fa-2x mb-2"></i>
+                <h3>{{ total_bookings }}</h3>
+                <p>Total Bookings</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-futbol fa-2x mb-2"></i>
+                <h3>{{ total_turfs_listed }}</h3>
+                <p>Turfs Listed</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="dashboard-stat-card">
+                <i class="fas fa-star fa-2x mb-2"></i>
+                <h3>{{ average_rating|floatformat:1 }}</h3>
+                <p>Average Rating</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Upcoming Bookings / Recent Turfs -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-custom h-100">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        {% if user.user_type == 'customer' %}Your Upcoming Bookings{% else %}Recent Bookings for Your Turfs{% endif %}
+                    </h5>
+                    {% if recent_activity %}
+                        <ul class="list-group list-group-flush">
+                            {% for item in recent_activity %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if user.user_type == 'customer' %}
+                                            <a href="{% url 'bookings:detail' item.pk %}" class="text-decoration-none fw-bold">{{ item.turf.name }}</a>
+                                            <small class="d-block text-muted">{{ item.booking_date|date:"M d, Y" }} at {{ item.start_time|time:"h:i A" }}</small>
+                                        {% else %}
+                                            <a href="{% url 'bookings:detail' item.pk %}" class="text-decoration-none fw-bold">Booking for {{ item.turf.name }}</a>
+                                            <small class="d-block text-muted">By {{ item.user.username }} on {{ item.booking_date|date:"M d, Y" }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge 
+                                        {% if item.status == 'confirmed' %}bg-success
+                                        {% elif item.status == 'pending' %}bg-warning text-dark
+                                        {% elif item.status == 'cancelled' %}bg-danger
+                                        {% elif item.status == 'completed' %}bg-info
+                                        {% endif %}
+                                        ">{{ item.get_status_display }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="mt-3 text-end">
+                            <a href="{% url 'bookings:list' %}" class="btn btn-sm btn-outline-primary">View All Bookings</a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent activity to display.</p>
+                        {% if user.user_type == 'customer' %}
+                            <a href="{% url 'turfs:list' %}" class="btn btn-primary">Book a Turf Now</a>
+                        {% else %}
+                            <a href="{% url 'turfs:create' %}" class="btn btn-primary">Add Your First Turf</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-custom h-100">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Quick Actions</h5>
+                    <div class="list-group">
+                        <a href="{% url 'accounts:profile' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-user-circle me-2"></i>Manage Profile
+                        </a>
+                        <a href="{% url 'accounts:change_password' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                        {% if user.user_type == 'customer' %}
+                            <a href="{% url 'turfs:list' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-search me-2"></i>Find New Turfs
+                            </a>
+                        {% elif user.user_type == 'turf_owner' %}
+                            <a href="{% url 'turfs:create' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-plus-circle me-2"></i>Add New Turf
+                            </a>
+                            <a href="{% url 'bookings:analytics' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-chart-bar me-2"></i>View Analytics
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Sections (e.g., Notifications, Recommendations) -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-custom">
+                <div class="card-body">
+                    <h5 class="card-title">Notifications</h5>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-bell me-2"></i>
+                        No new notifications at the moment.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
